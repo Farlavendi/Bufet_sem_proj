@@ -173,9 +173,10 @@ class StyledTree(ttk.Treeview):
 #  TAB: Tovar
 # ══════════════════════════════════════════════════════
 class TovarTab(tk.Frame):
-    def __init__(self, parent, repo: TovarRepo):
+    def __init__(self, parent, repo: TovarRepo, is_admin: bool = True):
         super().__init__(parent, bg=BG)
         self.repo = repo
+        self.is_admin = is_admin
         self._build()
         self.refresh()
 
@@ -247,7 +248,8 @@ class TovarTab(tk.Frame):
         btns.pack(pady=(0, 8))
         StyledButton(btns, "➕ Pridať", self._add).pack(side="left", padx=4)
         StyledButton(btns, "✏️ Uložiť zmeny", self._update, color=ACCENT2).pack(side="left", padx=4)
-        StyledButton(btns, "🗑 Vymazať", self._delete, color=DANGER).pack(side="left", padx=4)
+        if self.is_admin:
+            StyledButton(btns, "🗑 Vymazať", self._delete, color=DANGER).pack(side="left", padx=4)
         StyledButton(btns, "✖ Zrušiť výber", self._clear_form, color=BORDER).pack(side="left", padx=4)
 
         self._selected_id = None
@@ -355,9 +357,10 @@ class TovarTab(tk.Frame):
 #  TAB: Zákazníci
 # ══════════════════════════════════════════════════════
 class ZakaznikTab(tk.Frame):
-    def __init__(self, parent, repo: ZakaznikRepo):
+    def __init__(self, parent, repo: ZakaznikRepo, is_admin: bool = True):
         super().__init__(parent, bg=BG)
         self.repo = repo
+        self.is_admin = is_admin
         self._build()
         self.refresh()
 
@@ -380,21 +383,12 @@ class ZakaznikTab(tk.Frame):
                  highlightthickness=1, highlightbackground=BORDER,
                  highlightcolor=ACCENT).pack(side="left", padx=(4, 12), ipady=3)
 
-        tk.Label(right, text="Trieda:", bg=BG, fg=TEXT_DIM,
-                 font=FONT_SMALL).pack(side="left")
-        self._trieda_var = tk.StringVar(value="Všetky")
-        self._trieda_cb = ttk.Combobox(right, textvariable=self._trieda_var,
-                                        width=10, state="readonly", font=FONT_BODY)
-        self._trieda_cb.pack(side="left", padx=(4, 4))
-        self._trieda_cb.bind("<<ComboboxSelected>>", lambda _: self.refresh())
-
         tree_frame = tk.Frame(self, bg=BG)
         tree_frame.pack(fill="both", expand=True, padx=16, pady=4)
 
-        cols = ["ID", "Meno", "Trieda", "Email", "Telefón"]
+        cols = ["ID", "Meno", "Email", "Telefón"]
         self.tree = StyledTree(tree_frame, cols)
         self.tree.column("ID", width=40)
-        self.tree.column("Trieda", width=70)
         self.tree.pack(fill="both", expand=True)
         self.tree.bind("<<TreeviewSelect>>", self._on_select)
 
@@ -406,20 +400,19 @@ class ZakaznikTab(tk.Frame):
         row1 = tk.Frame(form, bg=SURFACE)
         row1.pack(fill="x", padx=10, pady=8)
 
-        self.f_meno = LabeledEntry(row1, "Meno *", width=20)
+        self.f_meno = LabeledEntry(row1, "Meno *", width=22)
         self.f_meno.pack(side="left", padx=(0, 10))
-        self.f_trieda = LabeledEntry(row1, "Trieda *", width=8)
-        self.f_trieda.pack(side="left", padx=(0, 10))
-        self.f_email = LabeledEntry(row1, "Email *", width=24)
+        self.f_email = LabeledEntry(row1, "Email *", width=26)
         self.f_email.pack(side="left", padx=(0, 10))
-        self.f_telefon = LabeledEntry(row1, "Telefón", width=14)
+        self.f_telefon = LabeledEntry(row1, "Telefón", width=16)
         self.f_telefon.pack(side="left")
 
         btns = tk.Frame(form, bg=SURFACE)
         btns.pack(pady=(0, 8))
         StyledButton(btns, "➕ Pridať", self._add).pack(side="left", padx=4)
         StyledButton(btns, "✏️ Uložiť zmeny", self._update, color=ACCENT2).pack(side="left", padx=4)
-        StyledButton(btns, "🗑 Vymazať", self._delete, color=DANGER).pack(side="left", padx=4)
+        if self.is_admin:
+            StyledButton(btns, "🗑 Vymazať", self._delete, color=DANGER).pack(side="left", padx=4)
         StyledButton(btns, "✖ Zrušiť výber", self._clear_form, color=BORDER).pack(side="left", padx=4)
 
         self._selected_id = None
@@ -435,7 +428,7 @@ class ZakaznikTab(tk.Frame):
         else:
             zakaznici = self.repo.get_all()
 
-        self.tree.load([(z.id, z.meno, z.trieda, z.email, z.telefon) for z in zakaznici])
+        self.tree.load([(z.id, z.meno, z.email, z.telefon) for z in zakaznici])
 
         triedy = ["Všetky"] + self.repo.get_triedy()
         self._trieda_cb["values"] = triedy
@@ -447,20 +440,16 @@ class ZakaznikTab(tk.Frame):
         vals = self.tree.item(sel[0])["values"]
         self._selected_id = vals[0]
         self.f_meno.set(vals[1])
-        self.f_trieda.set(vals[2])
-        self.f_email.set(vals[3])
-        self.f_telefon.set(vals[4] or "")
+        self.f_email.set(vals[2])
+        self.f_telefon.set(vals[3] or "")
 
     def _parse_form(self):
         meno = self.f_meno.get()
-        trieda = self.f_trieda.get()
         email = self.f_email.get()
         telefon = self.f_telefon.get()
         if not meno:
             raise ValueError("Meno je povinné.")
-        if not trieda:
-            raise ValueError("Trieda je povinná.")
-        return Zakaznik(meno=meno, trieda=trieda, email=email, telefon=telefon)
+        return Zakaznik(meno=meno, email=email, telefon=telefon)
 
     def _add(self):
         try:
@@ -500,7 +489,7 @@ class ZakaznikTab(tk.Frame):
 
     def _clear_form(self):
         self._selected_id = None
-        for f in [self.f_meno, self.f_trieda, self.f_email, self.f_telefon]:
+        for f in [self.f_meno, self.f_email, self.f_telefon]:
             f.clear()
         self.tree.selection_remove(self.tree.selection())
 
@@ -527,7 +516,7 @@ class ObjednavkyTab(tk.Frame):
         tree_frame = tk.Frame(self, bg=BG)
         tree_frame.pack(fill="both", expand=True, padx=16, pady=4)
 
-        cols = ["ID", "Tovar", "Zákazník", "Trieda", "Množstvo", "Celkom (€)", "Dátum"]
+        cols = ["ID", "Tovar", "Zákazník", "Množstvo", "Celkom (€)", "Dátum"]
         self.tree = StyledTree(tree_frame, cols)
         self.tree.column("ID", width=40)
         self.tree.column("Množstvo", width=70)
@@ -676,7 +665,7 @@ class StatistikyTab(tk.Frame):
                  font=FONT_HEAD).pack(anchor="w", pady=(0, 4))
         rf = tk.Frame(right, bg=BG)
         rf.pack(fill="both", expand=True)
-        cols_r = ["Meno", "Trieda", "Objednávok", "Celkom (€)"]
+        cols_r = ["Meno", "Objednávok", "Celkom (€)"]
         self.tree_zak = StyledTree(rf, cols_r)
         self.tree_zak.pack(fill="both", expand=True)
         paned.add(right)
@@ -703,7 +692,7 @@ class StatistikyTab(tk.Frame):
 
         sumy = self.obj_repo.get_suma_by_zakaznik()
         self.tree_zak.load([
-            (r["meno"], r["trieda"], r["pocet_objednavok"], f"{r['celkova_suma']:.2f}")
+            (r["meno"], r["pocet_objednavok"], f"{r['celkova_suma']:.2f}")
             for r in sumy
         ])
 
@@ -711,6 +700,185 @@ class StatistikyTab(tk.Frame):
         self.tree_warn.load([
             (t.id, t.nazov, t.kategoria, t.mnozstvo) for t in malo
         ])
+
+
+# ══════════════════════════════════════════════════════
+#  Hlavné okno
+# ══════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════
+#  TAB: Používatelia (len admin)
+# ══════════════════════════════════════════════════════
+class PouzivatelTab(tk.Frame):
+    def __init__(self, parent, repo: PouzivatelRepo):
+        super().__init__(parent, bg=BG)
+        self.repo = repo
+        self._build()
+        self.refresh()
+
+    def _build(self):
+        tk.Label(self, text="Používatelia", bg=BG, fg=TEXT,
+                 font=FONT_TITLE).pack(anchor="w", padx=16, pady=(14, 6))
+
+        tree_frame = tk.Frame(self, bg=BG)
+        tree_frame.pack(fill="both", expand=True, padx=16, pady=4)
+        cols = ["ID", "Meno", "Rola"]
+        self.tree = StyledTree(tree_frame, cols)
+        self.tree.column("ID", width=40)
+        self.tree.column("Rola", width=100)
+        self.tree.pack(fill="both", expand=True)
+        self.tree.bind("<<TreeviewSelect>>", self._on_select)
+
+        form = tk.LabelFrame(self, text=" Nový používateľ ", bg=SURFACE, fg=ACCENT,
+                             font=FONT_HEAD, bd=0, highlightthickness=1,
+                             highlightbackground=BORDER)
+        form.pack(fill="x", padx=16, pady=8)
+
+        row1 = tk.Frame(form, bg=SURFACE)
+        row1.pack(fill="x", padx=10, pady=8)
+
+        self.f_meno = LabeledEntry(row1, "Meno *", width=18)
+        self.f_meno.pack(side="left", padx=(0, 10))
+        self.f_heslo = LabeledEntry(row1, "Heslo *", width=18)
+        self.f_heslo.pack(side="left", padx=(0, 10))
+        self.f_heslo.entry.config(show="*")
+
+        tk.Label(row1, text="Rola *", bg=SURFACE, fg=TEXT_DIM,
+                 font=FONT_SMALL).pack(side="left")
+        self._rola_var = tk.StringVar(value="obsluha")
+        rola_frame = tk.Frame(row1, bg=SURFACE)
+        rola_frame.pack(side="left", padx=(4, 0))
+        for rola in ("admin", "obsluha"):
+            tk.Radiobutton(rola_frame, text=rola, variable=self._rola_var,
+                           value=rola, bg=SURFACE, fg=TEXT,
+                           selectcolor=BG, activebackground=SURFACE,
+                           font=FONT_BODY).pack(side="left", padx=4)
+
+        btns = tk.Frame(form, bg=SURFACE)
+        btns.pack(pady=(0, 8))
+        StyledButton(btns, "➕ Pridať", self._add).pack(side="left", padx=4)
+        StyledButton(btns, "🔄 Zmeniť rolu", self._change_rola,
+                     color=ACCENT2).pack(side="left", padx=4)
+        StyledButton(btns, "🗑 Vymazať", self._delete,
+                     color=DANGER).pack(side="left", padx=4)
+
+        self._selected_id = None
+
+    def refresh(self):
+        users = self.repo.get_all()
+        self.tree.load([(u.id, u.meno, u.rola) for u in users])
+
+    def _on_select(self, _=None):
+        sel = self.tree.selection()
+        if not sel:
+            return
+        vals = self.tree.item(sel[0])["values"]
+        self._selected_id = vals[0]
+        self.f_meno.set(vals[1])
+        self._rola_var.set(vals[2])
+
+    def _add(self):
+        meno = self.f_meno.get()
+        heslo = self.f_heslo.get()
+        rola = self._rola_var.get()
+        if not meno:
+            messagebox.showerror("Chyba", "Meno je povinné.")
+            return
+        if not heslo:
+            messagebox.showerror("Chyba", "Heslo je povinné.")
+            return
+        try:
+            self.repo.add(Pouzivatel(meno=meno, heslo=heslo, rola=rola))
+            self.f_meno.clear()
+            self.f_heslo.clear()
+            self.refresh()
+        except ValueError as e:
+            messagebox.showerror("Chyba", str(e))
+
+    def _change_rola(self):
+        if self._selected_id is None:
+            messagebox.showwarning("Upozornenie", "Najprv vyber používateľa.")
+            return
+        nova_rola = self._rola_var.get()
+        try:
+            self.repo.update_rola(self._selected_id, nova_rola)
+            self.refresh()
+        except ValueError as e:
+            messagebox.showerror("Chyba", str(e))
+
+    def _delete(self):
+        if self._selected_id is None:
+            messagebox.showwarning("Upozornenie", "Najprv vyber používateľa.")
+            return
+        vals = self.tree.item(self.tree.selection()[0])["values"]
+        if vals[1] == "admin" and len([u for u in self.repo.get_all() if u.rola == "admin"]) == 1:
+            messagebox.showerror("Chyba", "Nedá sa vymazať posledný admin účet.")
+            return
+        if not messagebox.askyesno("Potvrdiť", f"Vymazať používateľa '{vals[1]}'?"):
+            return
+        try:
+            self.repo.delete(self._selected_id)
+            self._selected_id = None
+            self.refresh()
+        except Exception as e:
+            messagebox.showerror("Chyba", str(e))
+
+
+# ══════════════════════════════════════════════════════
+#  Prihlasovací dialóg
+# ══════════════════════════════════════════════════════
+class LoginDialog(tk.Toplevel):
+    def __init__(self, parent, repo: PouzivatelRepo):
+        super().__init__(parent)
+        self.repo = repo
+        self.result: Pouzivatel | None = None
+
+        self.title("Prihlásenie")
+        self.resizable(False, False)
+        self.configure(bg=BG)
+        self.grab_set()
+
+        self._build()
+        self.update_idletasks()
+        w, h = 360, 280
+        x = (self.winfo_screenwidth()  - w) // 2
+        y = (self.winfo_screenheight() - h) // 2
+        self.geometry(f"{w}x{h}+{x}+{y}")
+        self.bind("<Return>", lambda _: self._login())
+
+    def _build(self):
+        tk.Label(self, text="🍞 Školský bufet", bg=BG, fg=ACCENT,
+                 font=("Helvetica", 16, "bold")).pack(pady=(28, 4))
+        tk.Label(self, text="Prihláste sa pre pokračovanie", bg=BG, fg=TEXT_DIM,
+                 font=FONT_SMALL).pack(pady=(0, 20))
+
+        frame = tk.Frame(self, bg=BG)
+        frame.pack(padx=40, fill="x")
+
+        self.f_meno = LabeledEntry(frame, "Meno", width=24)
+        self.f_meno.pack(fill="x", pady=(0, 8))
+
+        self.f_heslo = LabeledEntry(frame, "Heslo", width=24)
+        self.f_heslo.entry.config(show="*")
+        self.f_heslo.pack(fill="x", pady=(0, 16))
+
+        self._err_label = tk.Label(frame, text="", bg=BG, fg=DANGER, font=FONT_SMALL)
+        self._err_label.pack()
+
+        StyledButton(frame, "Prihlásiť sa", self._login).pack(fill="x", ipady=4)
+
+    def _login(self):
+        meno = self.f_meno.get()
+        heslo = self.f_heslo.get()
+        if not meno or not heslo:
+            self._err_label.config(text="Vyplňte meno aj heslo.")
+            return
+        user = self.repo.verify(meno, heslo)
+        if user is None:
+            self._err_label.config(text="Nesprávne meno alebo heslo.")
+            self.f_heslo.clear()
+            return
+        self.result = user
+        self.destroy()
 
 
 # ══════════════════════════════════════════════════════
@@ -728,17 +896,36 @@ class BufetGUI:
         self.zak_repo.create_table()
         self.obj_repo.create_table()
         self.pou_repo.create_table()
+        self._ensure_default_admin()
 
         self.root = tk.Tk()
-        self.root.title("Školský bufet")
+        self.root.withdraw()   # skryj hlavné okno kým neprebehne login
+
+        self.current_user: Pouzivatel | None = self._do_login()
+        if self.current_user is None:
+            self.db.close()
+            self.root.destroy()
+            return
+
+        self.root.title(f"Školský bufet  —  {self.current_user.meno} [{self.current_user.rola}]")
         self.root.geometry("1100x720")
         self.root.configure(bg=BG)
         self.root.minsize(900, 600)
+        self.root.deiconify()  # zobraz hlavné okno
 
         self._build_menu()
         self._build_tabs()
-
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
+
+    def _ensure_default_admin(self):
+        """Ak neexistuje žiadny admin, vytvorí default účet admin/admin."""
+        if not self.pou_repo.get_all():
+            self.pou_repo.add(Pouzivatel(meno="admin", heslo="admin", rola="admin"))
+
+    def _do_login(self) -> Pouzivatel | None:
+        dialog = LoginDialog(self.root, self.pou_repo)
+        self.root.wait_window(dialog)
+        return dialog.result
 
     def _build_menu(self):
         menubar = tk.Menu(self.root, bg=SURFACE, fg=TEXT,
@@ -749,9 +936,11 @@ class BufetGUI:
         db_menu = tk.Menu(menubar, tearoff=0, bg=SURFACE, fg=TEXT,
                           activebackground=ACCENT, activeforeground=BG)
         menubar.add_cascade(label="Databáza", menu=db_menu)
-        db_menu.add_command(label="💾 Uložiť zálohu...", command=self._save_db)
-        db_menu.add_command(label="📂 Načítať zálohu...", command=self._load_db)
+        db_menu.add_command(label="💾Uložiť zálohu...", command=self._save_db)
+        if self.current_user.is_admin():
+            db_menu.add_command(label="📂 Načítať zálohu...", command=self._load_db)
         db_menu.add_separator()
+        db_menu.add_command(label="🔄 Odhlásiť sa", command=self._logout)
         db_menu.add_command(label="❌ Ukončiť", command=self._on_close)
 
     def _build_tabs(self):
@@ -767,27 +956,35 @@ class BufetGUI:
         nb = ttk.Notebook(self.root, style="Bufet.TNotebook")
         nb.pack(fill="both", expand=True)
 
-        self.tab_tovar = TovarTab(nb, self.tovar_repo)
+        self.tab_tovar = TovarTab(nb, self.tovar_repo,
+                                  is_admin=self.current_user.is_admin())
         nb.add(self.tab_tovar, text="  🛒 Tovar  ")
 
-        self.tab_zak = ZakaznikTab(nb, self.zak_repo)
+        self.tab_zak = ZakaznikTab(nb, self.zak_repo,
+                                   is_admin=self.current_user.is_admin())
         nb.add(self.tab_zak, text="  👥 Zákazníci  ")
 
         self.tab_obj = ObjednavkyTab(nb, self.obj_repo, self.tovar_repo, self.zak_repo)
         nb.add(self.tab_obj, text="  📋 Objednávky  ")
 
-        self.tab_stats = StatistikyTab(nb, self.obj_repo, self.tovar_repo)
-        nb.add(self.tab_stats, text="  📊 Štatistiky  ")
+        self._all_tabs = [self.tab_tovar, self.tab_zak, self.tab_obj]
 
-        # Pri prepnutí tabu obnoviť dáta
+        if self.current_user.is_admin():
+            self.tab_stats = StatistikyTab(nb, self.obj_repo, self.tovar_repo)
+            nb.add(self.tab_stats, text="  📊 Štatistiky  ")
+            self._all_tabs.append(self.tab_stats)
+
+            self.tab_pou = PouzivatelTab(nb, self.pou_repo)
+            nb.add(self.tab_pou, text="  👤 Používatelia  ")
+            self._all_tabs.append(self.tab_pou)
+
         nb.bind("<<NotebookTabChanged>>", self._on_tab_change)
 
     def _on_tab_change(self, event):
         nb = event.widget
         idx = nb.index(nb.select())
-        tabs = [self.tab_tovar, self.tab_zak, self.tab_obj, self.tab_stats]
-        if idx < len(tabs):
-            tabs[idx].refresh()
+        if idx < len(self._all_tabs):
+            self._all_tabs[idx].refresh()
 
     def _save_db(self):
         path = filedialog.asksaveasfilename(
@@ -809,16 +1006,24 @@ class BufetGUI:
                                         "Načítanie nahradí aktuálnu databázu. Pokračovať?"):
                 return
             self.db.load(path)
-            for tab in [self.tab_tovar, self.tab_zak, self.tab_obj, self.tab_stats]:
+            for tab in self._all_tabs:
                 tab.refresh()
             messagebox.showinfo("Hotovo", "Databáza načítaná.")
+
+    def _logout(self):
+        if not messagebox.askyesno("Odhlásiť", "Naozaj sa chcete odhlásiť?"):
+            return
+        self.db.close()
+        self.root.destroy()
+        BufetGUI().run()
 
     def _on_close(self):
         self.db.close()
         self.root.destroy()
 
     def run(self):
-        self.root.mainloop()
+        if self.current_user is not None:
+            self.root.mainloop()
 
 
 if __name__ == "__main__":
