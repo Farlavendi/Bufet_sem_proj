@@ -1,7 +1,5 @@
-import sqlite3
 from db.connection import Database
 from models.objednavka import Objednavka
-
 
 VALID_SORT_COLUMNS = {"datum", "mnozstvo", "id_tovaru", "id_zakaznika"}
 
@@ -13,14 +11,15 @@ class ObjednavkaRepo:
     def create_table(self):
         cursor = self._db.get_cursor()
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS objednavky (
-                id           INTEGER PRIMARY KEY AUTOINCREMENT,
-                id_tovaru    INTEGER NOT NULL REFERENCES tovar(id),
-                id_zakaznika INTEGER NOT NULL REFERENCES zakaznici(id),
-                mnozstvo     INTEGER NOT NULL CHECK(mnozstvo > 0),
-                datum        TEXT    NOT NULL
-            )
-        """)
+                       CREATE TABLE IF NOT EXISTS objednavky
+                       (
+                           id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                           id_tovaru    INTEGER NOT NULL REFERENCES tovar (id),
+                           id_zakaznika INTEGER NOT NULL REFERENCES zakaznici (id),
+                           mnozstvo     INTEGER NOT NULL CHECK (mnozstvo > 0),
+                           datum        TEXT    NOT NULL
+                       )
+                       """)
         self._db.commit()
 
     def add(self, objednavka: Objednavka) -> int:
@@ -28,7 +27,7 @@ class ObjednavkaRepo:
         conn = self._db.get_connection()
         cursor = conn.cursor()
         try:
-            # Skontroluj dostatok tovaru
+
             cursor.execute("SELECT mnozstvo FROM tovar WHERE id = ?", (objednavka.id_tovaru,))
             row = cursor.fetchone()
             if row is None:
@@ -36,13 +35,12 @@ class ObjednavkaRepo:
             if row["mnozstvo"] < objednavka.mnozstvo:
                 raise ValueError(f"Nedostatok tovaru na sklade (dostupné: {row['mnozstvo']})")
 
-            # Vlož objednávku
             cursor.execute(
                 "INSERT INTO objednavky (id_tovaru, id_zakaznika, mnozstvo, datum) VALUES (?, ?, ?, ?)",
                 (objednavka.id_tovaru, objednavka.id_zakaznika,
                  objednavka.mnozstvo, objednavka.datum)
             )
-            # Zníž sklad
+
             cursor.execute(
                 "UPDATE tovar SET mnozstvo = mnozstvo - ? WHERE id = ?",
                 (objednavka.mnozstvo, objednavka.id_tovaru)
@@ -129,7 +127,7 @@ class ObjednavkaRepo:
         cursor.execute(f"""
             SELECT o.id, o.mnozstvo, o.datum,
                    t.nazov AS nazov_tovaru, t.cena,
-                   z.meno  AS meno_zakaznika, z.trieda
+                   z.meno  AS meno_zakaznika
             FROM objednavky o
             JOIN tovar     t ON o.id_tovaru    = t.id
             JOIN zakaznici z ON o.id_zakaznika = z.id
@@ -141,27 +139,28 @@ class ObjednavkaRepo:
         """Vráti celkovú sumu objednávok pre každého zákazníka."""
         cursor = self._db.get_cursor()
         cursor.execute("""
-            SELECT z.meno, z.trieda,
-                   COUNT(o.id)              AS pocet_objednavok,
-                   SUM(o.mnozstvo * t.cena) AS celkova_suma
-            FROM objednavky o
-            JOIN zakaznici z ON o.id_zakaznika = z.id
-            JOIN tovar     t ON o.id_tovaru    = t.id
-            GROUP BY z.id
-            ORDER BY celkova_suma DESC
-        """)
+                       SELECT z.meno,
+                              COUNT(o.id)              AS pocet_objednavok,
+                              SUM(o.mnozstvo * t.cena) AS celkova_suma
+                       FROM objednavky o
+                                JOIN zakaznici z ON o.id_zakaznika = z.id
+                                JOIN tovar t ON o.id_tovaru = t.id
+                       GROUP BY z.id
+                       ORDER BY celkova_suma DESC
+                       """)
         return [dict(r) for r in cursor.fetchall()]
 
     def get_statistiky_tovaru(self) -> list[dict]:
         """Koľko kusov každého tovaru bolo predaných celkovo."""
         cursor = self._db.get_cursor()
         cursor.execute("""
-            SELECT t.nazov, t.kategoria,
-                   COUNT(o.id)      AS pocet_objednavok,
-                   SUM(o.mnozstvo)  AS predanych_kusov
-            FROM objednavky o
-            JOIN tovar t ON o.id_tovaru = t.id
-            GROUP BY t.id
-            ORDER BY predanych_kusov DESC
-        """)
+                       SELECT t.nazov,
+                              t.kategoria,
+                              COUNT(o.id)     AS pocet_objednavok,
+                              SUM(o.mnozstvo) AS predanych_kusov
+                       FROM objednavky o
+                                JOIN tovar t ON o.id_tovaru = t.id
+                       GROUP BY t.id
+                       ORDER BY predanych_kusov DESC
+                       """)
         return [dict(r) for r in cursor.fetchall()]

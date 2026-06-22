@@ -4,7 +4,6 @@ Spustenie: python tests.py
 """
 import os
 import sys
-import shutil
 
 sys.path.insert(0, os.path.dirname(__file__))
 
@@ -81,16 +80,16 @@ TOVARY = [
 ]
 
 ZAKAZNICI = [
-    Zakaznik("Adam Novák", "1A", "adam.novak@skola.sk", "0901111111"),
-    Zakaznik("Barbora Kováčová", "1A", "bara.kovac@skola.sk", "0902222222"),
-    Zakaznik("Cyril Horváth", "2B", "cyril.h@skola.sk", "0903333333"),
-    Zakaznik("Denisa Lukáčová", "2B", "denisa.l@skola.sk", "0904444444"),
-    Zakaznik("Erik Szabó", "3C", "erik.szabo@skola.sk", "0905555555"),
-    Zakaznik("Františka Olejár", "3C", "fanka.o@skola.sk", "0906666666"),
-    Zakaznik("Gabriel Tóth", "4D", "gabo.toth@skola.sk", "0907777777"),
-    Zakaznik("Helena Varga", "4D", "helena.v@skola.sk", "0908888888"),
-    Zakaznik("Ivan Molnár", "5E", "ivan.m@skola.sk", "0909999999"),
-    Zakaznik("Jana Baláž", "5E", "jana.balaz@skola.sk", "0910000000"),
+    Zakaznik("Adam Novák", "adam.novak@skola.sk", "0901111111"),
+    Zakaznik("Barbora Kováčová", "bara.kovac@skola.sk", "0902222222"),
+    Zakaznik("Cyril Horváth", "cyril.h@skola.sk", "0903333333"),
+    Zakaznik("Denisa Lukáčová", "denisa.l@skola.sk", "0904444444"),
+    Zakaznik("Erik Szabó", "erik.szabo@skola.sk", "0905555555"),
+    Zakaznik("Františka Olejár", "fanka.o@skola.sk", "0906666666"),
+    Zakaznik("Gabriel Tóth", "gabo.toth@skola.sk", "0907777777"),
+    Zakaznik("Helena Varga", "helena.v@skola.sk", "0908888888"),
+    Zakaznik("Ivan Molnár", "ivan.m@skola.sk", "0909999999"),
+    Zakaznik("Jana Baláž", "jana.balaz@skola.sk", "0910000000"),
 ]
 
 
@@ -200,10 +199,10 @@ def test_select_sort(tovar_repo, zakaznik_repo, objednavka_repo):
     test("Zákazníci zoradení podľa mena ASC",
          zakaznici[0].meno <= zakaznici[-1].meno)
 
-    # Zakaznik — sort by trieda DESC
-    zakaznici_trieda = zakaznik_repo.get_all(sort_by="trieda", descending=True)
-    test("Zákazníci zoradení podľa triedy DESC",
-         zakaznici_trieda[0].trieda >= zakaznici_trieda[-1].trieda)
+    # Zakaznik — sort by email DESC
+    zakaznici_email = zakaznik_repo.get_all(sort_by="email", descending=True)
+    test("Zákazníci zoradení podľa emailu DESC",
+         zakaznici_email[0].email >= zakaznici_email[-1].email)
 
     # Objednavky — sort by datum DESC
     objednavky = objednavka_repo.get_all(sort_by="datum", descending=True)
@@ -251,12 +250,6 @@ def test_filter_search(tovar_repo, zakaznik_repo, objednavka_repo):
     test("Vyhľadávanie podľa kategórie 'Nápoje' (3 položky)", len(vysledky2) == 3)
 
     # Zakaznik filtre
-    trieda_1a = zakaznik_repo.filter_by_trieda("1A")
-    test("Filter zákazníkov triedy '1A' (2 osoby)", len(trieda_1a) == 2)
-
-    triedy = zakaznik_repo.get_triedy()
-    test("Unikátne triedy vrátené", len(triedy) >= 5)
-
     s_obj = zakaznik_repo.get_zakaznici_s_objednavkami()
     test("Zákazníci s objednávkami (JOIN)", len(s_obj) > 0)
 
@@ -271,7 +264,7 @@ def test_filter_search(tovar_repo, zakaznik_repo, objednavka_repo):
     test("Filter objednávok za dnešný deň", len(dnesne) == 10)
 
     sumy = objednavka_repo.get_suma_by_zakaznik()
-    test("Suma objednávok podľa zákazníka", len(sumy) > 0 and "celkova_suma" in sumy[0])
+    test("Suma objednávok podľa zákazníka", len(sumy) > 0 and "celkova_suma" in sumy[0] and "meno" in sumy[0])
 
     stats = objednavka_repo.get_statistiky_tovaru()
     test("Štatistiky predaja tovaru", len(stats) > 0 and "predanych_kusov" in stats[0])
@@ -301,10 +294,10 @@ def test_update(tovar_repo, zakaznik_repo, pouzivatel_repo, ids_tovar, ids_zak):
 
     # Zakaznik update
     z = zakaznik_repo.get_by_id(ids_zak[0])
-    z.trieda = "1B"
+    z.meno = "Adam Nový"
     zakaznik_repo.update(z)
     updated_z = zakaznik_repo.get_by_id(ids_zak[0])
-    test("Aktualizácia triedy zákazníka", updated_z.trieda == "1B")
+    test("Aktualizácia mena zákazníka", updated_z.meno == "Adam Nový")
 
     # Pouzivatel update rola
     pouzivatelia = pouzivatel_repo.get_all()

@@ -419,19 +419,8 @@ class ZakaznikTab(tk.Frame):
 
     def refresh(self):
         query = self._search_var.get().strip() if hasattr(self, "_search_var") else ""
-        trieda = self._trieda_var.get() if hasattr(self, "_trieda_var") else "Všetky"
-
-        if query:
-            zakaznici = self.repo.search(query)
-        elif trieda and trieda != "Všetky":
-            zakaznici = self.repo.filter_by_trieda(trieda)
-        else:
-            zakaznici = self.repo.get_all()
-
+        zakaznici = self.repo.search(query) if query else self.repo.get_all()
         self.tree.load([(z.id, z.meno, z.email, z.telefon) for z in zakaznici])
-
-        triedy = ["Všetky"] + self.repo.get_triedy()
-        self._trieda_cb["values"] = triedy
 
     def _on_select(self, _=None):
         sel = self.tree.selection()
@@ -561,7 +550,7 @@ class ObjednavkyTab(tk.Frame):
         rows = self.repo.get_all_with_names(sort_by="datum", descending=True)
         self.tree.load([
             (r["id"], r["nazov_tovaru"], r["meno_zakaznika"],
-             r["trieda"], r["mnozstvo"],
+             r["mnozstvo"],
              f"{r['mnozstvo'] * r['cena']:.2f}",
              r["datum"])
             for r in rows
@@ -574,7 +563,7 @@ class ObjednavkyTab(tk.Frame):
 
         # Obnov combobox pre zákazníkov
         zakaznici = self.zak_repo.get_all()
-        self._zak_map = {f"{z.meno} — {z.trieda}": z.id for z in zakaznici}
+        self._zak_map = {f"{z.meno} ({z.email})": z.id for z in zakaznici}
         self._zak_cb["values"] = list(self._zak_map.keys())
 
     def _add(self):
@@ -914,6 +903,7 @@ class BufetGUI:
         self.root.deiconify()  # zobraz hlavné okno
 
         self._build_menu()
+        self._build_header()
         self._build_tabs()
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
@@ -926,6 +916,29 @@ class BufetGUI:
         dialog = LoginDialog(self.root, self.pou_repo)
         self.root.wait_window(dialog)
         return dialog.result
+
+    def _build_header(self):
+        """Horná lišta s názvom, menom používateľa a logout tlačidlom."""
+        header = tk.Frame(self.root, bg=SURFACE, height=42)
+        header.pack(fill="x", side="top")
+        header.pack_propagate(False)
+
+        tk.Label(header, text="🍞 Školský bufet", bg=SURFACE, fg=ACCENT,
+                 font=("Helvetica", 13, "bold")).pack(side="left", padx=16)
+
+        StyledButton(header, "Odhlásiť sa", self._logout,
+                     color=DANGER).pack(side="right", padx=12, pady=6)
+
+        role_color = ACCENT if self.current_user.is_admin() else ACCENT2
+        tk.Label(header, text=f"{self.current_user.meno}  [{self.current_user.rola}]",
+                 bg=SURFACE, fg=role_color,
+                 font=FONT_BODY).pack(side="right", padx=(0, 8))
+
+        tk.Label(header, text="Prihlásený:", bg=SURFACE, fg=TEXT_DIM,
+                 font=FONT_SMALL).pack(side="right")
+
+        # Oddeľovač
+        tk.Frame(self.root, bg=BORDER, height=1).pack(fill="x")
 
     def _build_menu(self):
         menubar = tk.Menu(self.root, bg=SURFACE, fg=TEXT,

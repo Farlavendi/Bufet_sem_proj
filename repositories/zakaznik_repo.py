@@ -3,7 +3,7 @@ from db.connection import Database
 from models.zakaznik import Zakaznik
 
 
-VALID_SORT_COLUMNS = {"meno", "trieda", "email"}
+VALID_SORT_COLUMNS = {"meno", "email"}
 
 
 class ZakaznikRepo:
@@ -16,7 +16,6 @@ class ZakaznikRepo:
             CREATE TABLE IF NOT EXISTS zakaznici (
                 id      INTEGER PRIMARY KEY AUTOINCREMENT,
                 meno    TEXT    NOT NULL,
-                trieda  TEXT    NOT NULL,
                 email   TEXT    NOT NULL UNIQUE,
                 telefon TEXT
             )
@@ -27,8 +26,8 @@ class ZakaznikRepo:
         cursor = self._db.get_cursor()
         try:
             cursor.execute(
-                "INSERT INTO zakaznici (meno, trieda, email, telefon) VALUES (?, ?, ?, ?)",
-                (zakaznik.meno, zakaznik.trieda, zakaznik.email, zakaznik.telefon)
+                "INSERT INTO zakaznici (meno, email, telefon) VALUES (?, ?, ?)",
+                (zakaznik.meno, zakaznik.email, zakaznik.telefon)
             )
             self._db.commit()
             return cursor.lastrowid
@@ -42,7 +41,7 @@ class ZakaznikRepo:
         order = "DESC" if descending else "ASC"
         cursor = self._db.get_cursor()
         cursor.execute(f"SELECT * FROM zakaznici ORDER BY {sort_by} {order}")
-        return [Zakaznik(id=r["id"], meno=r["meno"], trieda=r["trieda"],
+        return [Zakaznik(id=r["id"], meno=r["meno"],
                          email=r["email"], telefon=r["telefon"])
                 for r in cursor.fetchall()]
 
@@ -52,7 +51,7 @@ class ZakaznikRepo:
         r = cursor.fetchone()
         if r is None:
             return None
-        return Zakaznik(id=r["id"], meno=r["meno"], trieda=r["trieda"],
+        return Zakaznik(id=r["id"], meno=r["meno"],
                         email=r["email"], telefon=r["telefon"])
 
     def update(self, zakaznik: Zakaznik):
@@ -61,8 +60,8 @@ class ZakaznikRepo:
         cursor = self._db.get_cursor()
         try:
             cursor.execute(
-                "UPDATE zakaznici SET meno=?, trieda=?, email=?, telefon=? WHERE id=?",
-                (zakaznik.meno, zakaznik.trieda, zakaznik.email, zakaznik.telefon, zakaznik.id)
+                "UPDATE zakaznici SET meno=?, email=?, telefon=? WHERE id=?",
+                (zakaznik.meno, zakaznik.email, zakaznik.telefon, zakaznik.id)
             )
             self._db.commit()
         except sqlite3.IntegrityError:
@@ -81,35 +80,18 @@ class ZakaznikRepo:
     def search(self, query: str) -> list[Zakaznik]:
         cursor = self._db.get_cursor()
         cursor.execute(
-            "SELECT * FROM zakaznici WHERE meno LIKE ? OR trieda LIKE ? OR email LIKE ?",
-            (f"%{query}%", f"%{query}%", f"%{query}%")
+            "SELECT * FROM zakaznici WHERE meno LIKE ? OR email LIKE ?",
+            (f"%{query}%", f"%{query}%")
         )
-        return [Zakaznik(id=r["id"], meno=r["meno"], trieda=r["trieda"],
+        return [Zakaznik(id=r["id"], meno=r["meno"],
                          email=r["email"], telefon=r["telefon"])
                 for r in cursor.fetchall()]
-
-    def filter_by_trieda(self, trieda: str) -> list[Zakaznik]:
-        """Vráti všetkých zákazníkov z danej triedy."""
-        cursor = self._db.get_cursor()
-        cursor.execute(
-            "SELECT * FROM zakaznici WHERE trieda = ? ORDER BY meno",
-            (trieda,)
-        )
-        return [Zakaznik(id=r["id"], meno=r["meno"], trieda=r["trieda"],
-                         email=r["email"], telefon=r["telefon"])
-                for r in cursor.fetchall()]
-
-    def get_triedy(self) -> list[str]:
-        """Vráti zoznam všetkých unikátnych tried."""
-        cursor = self._db.get_cursor()
-        cursor.execute("SELECT DISTINCT trieda FROM zakaznici ORDER BY trieda")
-        return [r["trieda"] for r in cursor.fetchall()]
 
     def get_zakaznici_s_objednavkami(self) -> list[dict]:
         """Vráti zákazníkov, ktorí majú aspoň jednu objednávku, s počtom objednávok."""
         cursor = self._db.get_cursor()
         cursor.execute("""
-            SELECT z.id, z.meno, z.trieda, z.email,
+            SELECT z.id, z.meno, z.email,
                    COUNT(o.id) AS pocet_objednavok
             FROM zakaznici z
             JOIN objednavky o ON o.id_zakaznika = z.id

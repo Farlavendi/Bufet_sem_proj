@@ -4,7 +4,6 @@ from dataclasses import dataclass, field
 @dataclass
 class Zakaznik:
     meno: str
-    trieda: str
     email: str
     telefon: str
     id: int = field(default=None)
@@ -16,4 +15,4 @@ class Zakaznik:
             raise ValueError(f"Neplatný email: {self.email}")
 
     def __str__(self) -> str:
-        return f"{self.meno} | {self.trieda} | {self.email} | {self.telefon}"
+        return f"{self.meno} | {self.email} | {self.telefon}"
