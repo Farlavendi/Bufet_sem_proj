@@ -953,7 +953,6 @@ class BufetGUI:
         if self.current_user.is_admin():
             db_menu.add_command(label="📂 Načítať zálohu...", command=self._load_db)
         db_menu.add_separator()
-        db_menu.add_command(label="🔄 Odhlásiť sa", command=self._logout)
         db_menu.add_command(label="❌ Ukončiť", command=self._on_close)
 
     def _build_tabs(self):
@@ -1006,8 +1005,13 @@ class BufetGUI:
             title="Uložiť zálohu databázy"
         )
         if path:
-            self.db.save(path)
-            messagebox.showinfo("Hotovo", f"Záloha uložená:\n{path}")
+            try:
+                self.db.save(path)
+                messagebox.showinfo("Hotovo", f"Záloha uložená:\n{path}")
+            except ValueError as e:
+                messagebox.showwarning("Upozornenie", str(e))
+            except Exception as e:
+                messagebox.showerror("Chyba", f"Nepodarilo sa uložiť:\n{e}")
 
     def _load_db(self):
         path = filedialog.askopenfilename(
@@ -1018,10 +1022,15 @@ class BufetGUI:
             if not messagebox.askyesno("Potvrdiť",
                                         "Načítanie nahradí aktuálnu databázu. Pokračovať?"):
                 return
-            self.db.load(path)
-            for tab in self._all_tabs:
-                tab.refresh()
-            messagebox.showinfo("Hotovo", "Databáza načítaná.")
+            try:
+                self.db.load(path)
+                for tab in self._all_tabs:
+                    tab.refresh()
+                messagebox.showinfo("Hotovo", "Databáza načítaná.")
+            except ValueError as e:
+                messagebox.showwarning("Upozornenie", str(e))
+            except Exception as e:
+                messagebox.showerror("Chyba", f"Nepodarilo sa načítať:\n{e}")
 
     def _logout(self):
         if not messagebox.askyesno("Odhlásiť", "Naozaj sa chcete odhlásiť?"):

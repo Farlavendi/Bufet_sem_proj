@@ -36,12 +36,14 @@ class Database:
             self._connection = None
 
     def save(self, filepath: str):
-        """Save current database to a file (backup)."""
         self.commit()
+        if os.path.abspath(self.db_path) == os.path.abspath(filepath):
+            raise ValueError("Cielovy subor je rovnaky ako aktualna databaza.")
         shutil.copy2(self.db_path, filepath)
 
     def load(self, filepath: str):
-        """Load database from a file, replacing current state."""
+        if os.path.abspath(self.db_path) == os.path.abspath(filepath):
+            raise ValueError("Zdrojovy subor je rovnaky ako aktualna databaza.")
         self.close()
         shutil.copy2(filepath, self.db_path)
         self._connect()
